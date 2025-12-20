@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthService } from '../services/auth.service.js';
-import { sendOtpBodySchema, verifyOtpBodySchema } from '../schemas/auth.schema.js';
+import { sendOtpBodySchema, verifyOtpBodySchema, refreshTokenBodySchema } from '../schemas/auth.schema.js';
 
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -28,6 +28,20 @@ export class AuthController {
 
     // Call service
     const result = await this.authService.verifyOtp(body.email, body.otp);
+
+    // Send response
+    return reply.code(200).send(result);
+  }
+
+  /**
+   * Handle refresh token request
+   */
+  async refreshToken(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    // Validate request body
+    const body = refreshTokenBodySchema.parse(request.body);
+
+    // Call service
+    const result = await this.authService.refreshTokens(body.refresh_token);
 
     // Send response
     return reply.code(200).send(result);

@@ -146,4 +146,33 @@ export class AuthService {
       },
     };
   }
+
+  /**
+   * Refresh access and refresh tokens
+   * @param refreshToken - The current refresh token
+   * @returns New token pair
+   */
+  async refreshTokens(refreshToken: string) {
+    // 1. Verify refresh token (throws UnauthorizedError if invalid/expired/wrong type)
+    const decoded = await this.tokenService.verifyRefreshToken(refreshToken);
+
+    // 2. Validate user still exists
+    const user = await this.userRepo.findById(decoded.userId);
+    if (!user) {
+      throw new UnauthorizedError('User not found');
+    }
+
+    // 3. Generate new token pair (token rotation)
+    const newAccessToken = this.tokenService.generateAccessToken(user.id);
+    const newRefreshToken = this.tokenService.generateRefreshToken(user.id);
+
+    return {
+      success: true,
+      tokens: {
+        access_token: newAccessToken,
+        refresh_token: newRefreshToken,
+        expires_in: 900, // 15 minutes in seconds
+      },
+    };
+  }
 }

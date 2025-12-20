@@ -6,7 +6,7 @@ import { TokenService } from '../services/token.service.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import { OtpRepository } from '../repositories/otp.repository.js';
 import { pool } from '../config/database.js';
-import { sendOtpSchema, verifyOtpSchema } from '../schemas/auth.schema.js';
+import { sendOtpSchema, verifyOtpSchema, refreshTokenSchema } from '../schemas/auth.schema.js';
 
 export async function authRoutes(fastify: FastifyInstance): Promise<void> {
   // Initialize repositories
@@ -40,6 +40,17 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
     },
     async (request, reply) => {
       return authController.verifyOtp(request, reply);
+    }
+  );
+
+  // POST /refresh-token
+  fastify.post(
+    '/refresh-token',
+    {
+      schema: refreshTokenSchema,
+    },
+    async (request, reply) => {
+      return authController.refreshToken(request, reply);
     }
   );
 }

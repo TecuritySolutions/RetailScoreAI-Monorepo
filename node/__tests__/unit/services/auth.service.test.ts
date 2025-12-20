@@ -390,4 +390,108 @@ describe('AuthService', () => {
       );
     });
   });
+
+  describe('refreshTokens()', () => {
+    const mockUser = {
+      id: 'user-refresh-123',
+      email: 'refresh@test.com',
+      is_verified: true,
+      created_at: new Date(),
+      updated_at: new Date(),
+      last_login_at: new Date(),
+    };
+
+    it('should refresh tokens for valid refresh token', async () => {
+      mockTokenService.verifyRefreshToken = vi.fn(async () => ({ userId: 'user-refresh-123' }));
+      mockUserRepo.findById.mockResolvedValue(mockUser);
+      mockTokenService.generateAccessToken.mockReturnValue('new_access_token');
+      mockTokenService.generateRefreshToken.mockReturnValue('new_refresh_token');
+
+      const result = await authService.refreshTokens('valid_refresh_token');
+
+      expect(mockTokenService.verifyRefreshToken).toHaveBeenCalledWith('valid_refresh_token');
+      expect(mockUserRepo.findById).toHaveBeenCalledWith('user-refresh-123');
+      expect(mockTokenService.generateAccessToken).toHaveBeenCalledWith('user-refresh-123');
+      expect(mockTokenService.generateRefreshToken).toHaveBeenCalledWith('user-refresh-123');
+      expect(result).toEqual({
+        success: true,
+        tokens: {
+          access_token: 'new_access_token',
+          refresh_token: 'new_refresh_token',
+          expires_in: 900,
+        },
+      });
+    });
+
+    it('should throw UnauthorizedError for invalid refresh token', async () => {
+      mockTokenService.verifyRefreshToken = vi.fn(async () => {
+        throw new UnauthorizedError('Invalid or expired refresh token');
+      });
+
+      await expect(authService.refreshTokens('invalid_token')).rejects.toThrow(
+        UnauthorizedError
+      );
+      await expect(authService.refreshTokens('invalid_token')).rejects.toThrow(
+        'Invalid or expired refresh token'
+      );
+    });
+
+    it('should throw UnauthorizedError for expired refresh token', async () => {
+      mockTokenService.verifyRefreshToken = vi.fn(async () => {
+        throw new UnauthorizedError('Invalid or expired refresh token');
+      });
+
+      await expect(authService.refreshTokens('expired_token')).rejects.toThrow(
+        UnauthorizedError
+      );
+    });
+
+    it('should throw UnauthorizedError for access token (wrong type)', async () => {
+      mockTokenService.verifyRefreshToken = vi.fn(async () => {
+        throw new UnauthorizedError('Invalid token type');
+      });
+
+      await expect(authService.refreshTokens('access_token_instead')).rejects.toThrow(
+        UnauthorizedError
+      );
+      await expect(authService.refreshTokens('access_token_instead')).rejects.toThrow(
+        'Invalid token type'
+      );
+    });
+
+    it('should throw UnauthorizedError if user not found', async () => {
+      mockTokenService.verifyRefreshToken = vi.fn(async () => ({ userId: 'user-not-found' }));
+      mockUserRepo.findById.mockResolvedValue(null);
+
+      await expect(authService.refreshTokens('valid_refresh_token')).rejects.toThrow(
+        UnauthorizedError
+      );
+      await expect(authService.refreshTokens('valid_refresh_token')).rejects.toThrow(
+        'User not found'
+      );
+    });
+
+    it('should generate new token pair (both access and refresh)', async () => {
+      mockTokenService.verifyRefreshToken = vi.fn(async () => ({ userId: 'user-refresh-123' }));
+      mockUserRepo.findById.mockResolvedValue(mockUser);
+      mockTokenService.generateAccessToken.mockReturnValue('new_access_token');
+      mockTokenService.generateRefreshToken.mockReturnValue('new_refresh_token');
+
+      const result = await authService.refreshTokens('old_refresh_token');
+
+      expect(result.tokens.access_token).toBe('new_access_token');
+      expect(result.tokens.refresh_token).toBe('new_refresh_token');
+      expect(result.tokens.access_token).not.toBe(result.tokens.refresh_token);
+    });
+
+    it('should return success response with expires_in', async () => {
+      mockTokenService.verifyRefreshToken = vi.fn(async () => ({ userId: 'user-refresh-123' }));
+      mockUserRepo.findById.mockResolvedValue(mockUser);
+
+      const result = await authService.refreshTokens('valid_refresh_token');
+
+      expect(result.success).toBe(true);
+      expect(result.tokens.expires_in).toBe(900);
+    });
+  });
 });

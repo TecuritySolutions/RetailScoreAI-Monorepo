@@ -25,6 +25,11 @@ export const verifyOtpBodySchema = z.object({
   otp: otpSchema,
 });
 
+// Refresh token request body schema
+export const refreshTokenBodySchema = z.object({
+  refresh_token: z.string().min(1, 'Refresh token is required'),
+});
+
 // Fastify schema for send-otp endpoint
 export const sendOtpSchema = {
   body: {
@@ -84,6 +89,34 @@ export const verifyOtpSchema = {
   },
 };
 
+// Fastify schema for refresh-token endpoint
+export const refreshTokenSchema = {
+  body: {
+    type: 'object',
+    required: ['refresh_token'],
+    properties: {
+      refresh_token: { type: 'string', minLength: 1 },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        tokens: {
+          type: 'object',
+          properties: {
+            access_token: { type: 'string' },
+            refresh_token: { type: 'string' },
+            expires_in: { type: 'number' },
+          },
+        },
+      },
+    },
+  },
+};
+
 // Type exports
 export type SendOtpBody = z.infer<typeof sendOtpBodySchema>;
 export type VerifyOtpBody = z.infer<typeof verifyOtpBodySchema>;
+export type RefreshTokenBody = z.infer<typeof refreshTokenBodySchema>;

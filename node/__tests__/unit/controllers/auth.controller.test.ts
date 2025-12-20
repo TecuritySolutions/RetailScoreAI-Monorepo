@@ -13,6 +13,7 @@ describe('AuthController', () => {
     mockAuthService = {
       requestOtp: vi.fn(),
       verifyOtp: vi.fn(),
+      refreshTokens: vi.fn(),
     };
 
     authController = new AuthController(mockAuthService);
@@ -237,6 +238,92 @@ describe('AuthController', () => {
 
       await expect(
         authController.verifyOtp(
+          mockRequest as FastifyRequest,
+          mockReply as FastifyReply
+        )
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('refreshToken()', () => {
+    it('should validate request body with Zod schema', async () => {
+      mockRequest.body = {
+        refresh_token: 'valid_refresh_token_string',
+      };
+
+      mockAuthService.refreshTokens.mockResolvedValue({
+        success: true,
+        tokens: {
+          access_token: 'new_access_token',
+          refresh_token: 'new_refresh_token',
+          expires_in: 900,
+        },
+      });
+
+      await authController.refreshToken(
+        mockRequest as FastifyRequest,
+        mockReply as FastifyReply
+      );
+
+      expect(mockAuthService.refreshTokens).toHaveBeenCalledWith(
+        'valid_refresh_token_string'
+      );
+      expect(mockReply.code).toHaveBeenCalledWith(200);
+    });
+
+    it('should call authService.refreshTokens() with refresh token', async () => {
+      mockRequest.body = {
+        refresh_token: 'test_refresh_token',
+      };
+
+      mockAuthService.refreshTokens.mockResolvedValue({
+        success: true,
+        tokens: {
+          access_token: 'new_access_token',
+          refresh_token: 'new_refresh_token',
+          expires_in: 900,
+        },
+      });
+
+      await authController.refreshToken(
+        mockRequest as FastifyRequest,
+        mockReply as FastifyReply
+      );
+
+      expect(mockAuthService.refreshTokens).toHaveBeenCalledWith('test_refresh_token');
+      expect(mockAuthService.refreshTokens).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return 200 with new token pair', async () => {
+      mockRequest.body = {
+        refresh_token: 'valid_refresh_token',
+      };
+
+      const expectedResult = {
+        success: true,
+        tokens: {
+          access_token: 'new_access_token',
+          refresh_token: 'new_refresh_token',
+          expires_in: 900,
+        },
+      };
+
+      mockAuthService.refreshTokens.mockResolvedValue(expectedResult);
+
+      await authController.refreshToken(
+        mockRequest as FastifyRequest,
+        mockReply as FastifyReply
+      );
+
+      expect(mockReply.code).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith(expectedResult);
+    });
+
+    it('should throw ValidationError for missing refresh_token', async () => {
+      mockRequest.body = {}; // Missing refresh_token
+
+      await expect(
+        authController.refreshToken(
           mockRequest as FastifyRequest,
           mockReply as FastifyReply
         )
