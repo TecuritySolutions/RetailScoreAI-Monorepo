@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { User, CreateUserDTO, UpdateUserDTO } from '../models/user.model.js';
+import { User, CreateUserDTO, UpdateUserDTO, UpdateUserProfileDTO, UserProfile } from '../models/user.model.js';
 import { DatabaseError, NotFoundError } from '../utils/errors.js';
 
 export class UserRepository {
@@ -115,6 +115,93 @@ export class UserRepository {
         throw error;
       }
       throw new DatabaseError(`Failed to delete user: ${error}`);
+    }
+  }
+
+  /**
+   * Update user profile
+   */
+  async updateProfile(userId: string, data: UpdateUserProfileDTO): Promise<User> {
+    try {
+      const fields: string[] = [];
+      const values: any[] = [];
+      let paramIndex = 1;
+
+      // Build dynamic UPDATE query based on provided fields
+      for (const [key, value] of Object.entries(data)) {
+        if (value !== undefined) {
+          fields.push(`${key} = $${paramIndex}`);
+          values.push(value);
+          paramIndex++;
+        }
+      }
+
+      if (fields.length === 0) {
+        // No fields to update, return current user
+        const user = await this.findById(userId);
+        if (!user) {
+          throw new NotFoundError('User not found');
+        }
+        return user;
+      }
+
+      const query = `
+        UPDATE users
+        SET ${fields.join(', ')}
+        WHERE id = $${paramIndex}
+        RETURNING *
+      `;
+      values.push(userId);
+
+      const result = await this.db.query<User>(query, values);
+
+      if (result.rows.length === 0) {
+        throw new NotFoundError('User not found');
+      }
+
+      if (!result.rows[0]) {
+        throw new DatabaseError('Failed to update user profile: No result returned');
+      }
+
+      return result.rows[0];
+    } catch (error) {
+      if (error instanceof NotFoundError || error instanceof DatabaseError) {
+        throw error;
+      }
+      throw new DatabaseError(`Failed to update user profile: ${error}`);
+    }
+  }
+
+  /**
+   * Get user profile (excluding sensitive fields)
+   */
+  async getProfile(userId: string): Promise<UserProfile> {
+    try {
+      const query = `
+        SELECT
+          id, email, full_name, phone_number, photo_url,
+          company_name, city, state, country, subscription_tier,
+          total_assessments_count, created_at, last_login_at
+        FROM users
+        WHERE id = $1
+      `;
+
+      const result = await this.db.query<UserProfile>(query, [userId]);
+
+      if (result.rows.length === 0) {
+        throw new NotFoundError('User not found');
+      }
+
+      if (!result.rows[0]) {
+        throw new DatabaseError('Failed to get user profile: No result returned');
+      }
+
+      return result.rows[0];
+    } catch (error) {
+      if (error instanceof NotFoundError || error instanceof DatabaseError) {
+        throw error;
+      }
+      throw new DatabaseError(`Failed to get user profile: ${error}`);
     }
   }
 }

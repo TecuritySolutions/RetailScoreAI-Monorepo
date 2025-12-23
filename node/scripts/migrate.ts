@@ -43,6 +43,24 @@ async function runMigrations() {
     await pool.query(migration2);
     console.log('✅ Migration 002 completed\n');
 
+    // Migration 3: Add user profile fields
+    console.log('📝 Running migration: 003_add_user_profile_fields.sql');
+    const migration3 = readFileSync(
+      join(process.cwd(), 'src/database/migrations/003_add_user_profile_fields.sql'),
+      'utf-8'
+    );
+    await pool.query(migration3);
+    console.log('✅ Migration 003 completed\n');
+
+    // Migration 4: Create assessments table
+    console.log('📝 Running migration: 004_create_assessments_table.sql');
+    const migration4 = readFileSync(
+      join(process.cwd(), 'src/database/migrations/004_create_assessments_table.sql'),
+      'utf-8'
+    );
+    await pool.query(migration4);
+    console.log('✅ Migration 004 completed\n');
+
     console.log('🎉 All migrations completed successfully!');
   } catch (error) {
     console.error('❌ Migration failed:', error);
