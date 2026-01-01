@@ -27,6 +27,43 @@ export const Colors = {
   },
 };
 
+export const DashboardColors = {
+  light: {
+    primary: '#3B82F6',
+    secondary: '#06B6D4',
+    accent: '#10B981',
+    warning: '#F59E0B',
+    danger: '#EF4444',
+
+    gradientStart: '#DBEAFE',
+    gradientEnd: '#E0F2FE',
+
+    cardBackground: '#FFFFFF',
+    cardBorder: '#E5E7EB',
+
+    scoreHigh: '#10B981',
+    scoreModerate: '#F59E0B',
+    scoreLow: '#EF4444',
+  },
+  dark: {
+    primary: '#60A5FA',
+    secondary: '#22D3EE',
+    accent: '#34D399',
+    warning: '#FBBF24',
+    danger: '#F87171',
+
+    gradientStart: '#1E3A8A',
+    gradientEnd: '#0E7490',
+
+    cardBackground: '#1F2937',
+    cardBorder: '#374151',
+
+    scoreHigh: '#34D399',
+    scoreModerate: '#FBBF24',
+    scoreLow: '#F87171',
+  },
+};
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */
