@@ -29,3 +29,7 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   return fastify;
 }
+
+// Export Fastify instance for Vercel serverless deployment
+// Vercel automatically wraps this as a serverless function
+export default await buildApp();
