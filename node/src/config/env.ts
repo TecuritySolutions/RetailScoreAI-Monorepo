@@ -44,7 +44,7 @@ const parseEnv = () => {
       error.errors.forEach((err) => {
         console.error(`  - ${err.path.join('.')}: ${err.message}`);
       });
-      process.exit(1);
+      throw new Error('Environment validation failed. Check the logs for details.');
     }
     throw error;
   }

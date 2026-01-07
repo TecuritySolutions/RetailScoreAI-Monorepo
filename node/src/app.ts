@@ -9,8 +9,13 @@ import { errorHandler } from './middleware/error-handler.js';
 export async function buildApp(): Promise<FastifyInstance> {
   const fastify = buildServer();
 
-  // Test database connection
-  await testDatabaseConnection();
+  // Test database connection (non-blocking for serverless)
+  try {
+    await testDatabaseConnection();
+  } catch (error) {
+    fastify.log.error({ error }, 'Database connection test failed during initialization');
+    // Don't throw - allow the app to start and fail gracefully on first request
+  }
 
   // Register global error handler
   fastify.setErrorHandler(errorHandler);
@@ -29,7 +34,3 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   return fastify;
 }
-
-// Export Fastify instance for Vercel serverless deployment
-// Vercel automatically wraps this as a serverless function
-export default await buildApp();
