@@ -1,22 +1,32 @@
-import Fastify from 'fastify';
-import { buildApp } from './app.js';
+import { buildServer } from './config/server.js';
+import { testDatabaseConnection } from './config/database.js';
+import { authRoutes } from './routes/auth.routes.js';
+import { userRoutes } from './routes/user.routes.js';
+import { assessmentRoutes, userAssessmentRoutes } from './routes/assessment.routes.js';
+import { errorHandler } from './middleware/error-handler.js';
 
-// Serverless entrypoint for Vercel
-// Vercel automatically detects this file and wraps it as a serverless function
-const fastify = Fastify({ logger: true });
+// Build Fastify instance for Vercel serverless
+const fastify = buildServer();
 
-// Initialize the app
-buildApp()
-  .then((app) => {
-    // Start listening - Vercel handles the serverless wrapping
-    app.listen({ port: 3000, host: '0.0.0.0' }, (err) => {
-      if (err) {
-        app.log.error(err);
-        process.exit(1);
-      }
-    });
-  })
-  .catch((error) => {
-    fastify.log.error({ error }, 'Failed to initialize Fastify app');
-    process.exit(1);
-  });
+// Test database connection (non-blocking)
+testDatabaseConnection().catch((error) => {
+  fastify.log.error({ error }, 'Database connection test failed during initialization');
+});
+
+// Register global error handler
+fastify.setErrorHandler(errorHandler);
+
+// Health check endpoint
+fastify.get('/health', async () => ({
+  status: 'ok',
+  timestamp: new Date().toISOString(),
+}));
+
+// Register routes
+await fastify.register(authRoutes, { prefix: '/api/auth' });
+await fastify.register(userRoutes, { prefix: '/api/user' });
+await fastify.register(assessmentRoutes, { prefix: '/api/assessments' });
+await fastify.register(userAssessmentRoutes, { prefix: '/api/user' });
+
+// Vercel intercepts this .listen() call and wraps it as serverless
+fastify.listen({ port: 3000 });

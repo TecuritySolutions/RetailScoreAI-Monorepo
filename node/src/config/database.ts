@@ -13,7 +13,7 @@ export const pool = new Pool({
 // Handle pool errors
 pool.on('error', (err) => {
   console.error('Unexpected database pool error:', err);
-  process.exit(-1);
+  // Don't exit in serverless - just log
 });
 
 // Test database connection
