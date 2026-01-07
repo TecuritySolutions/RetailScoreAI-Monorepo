@@ -1,33 +1,11 @@
-import { buildServer } from './config/server.js';
-import { testDatabaseConnection, closeDatabaseConnection } from './config/database.js';
-import { authRoutes } from './routes/auth.routes.js';
-import { userRoutes } from './routes/user.routes.js';
-import { assessmentRoutes, userAssessmentRoutes } from './routes/assessment.routes.js';
-import { errorHandler } from './middleware/error-handler.js';
+import { buildApp } from './app.js';
+import { closeDatabaseConnection } from './config/database.js';
 import { env } from './config/env.js';
 
 async function start() {
-  const fastify = buildServer();
+  const fastify = await buildApp();
 
   try {
-    // Test database connection
-    await testDatabaseConnection();
-
-    // Register global error handler
-    fastify.setErrorHandler(errorHandler);
-
-    // Health check endpoint
-    fastify.get('/health', async () => ({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-    }));
-
-    // Register routes
-    await fastify.register(authRoutes, { prefix: '/api/auth' });
-    await fastify.register(userRoutes, { prefix: '/api/user' });
-    await fastify.register(assessmentRoutes, { prefix: '/api/assessments' });
-    await fastify.register(userAssessmentRoutes, { prefix: '/api/user' });
-
     // Graceful shutdown handlers
     const signals = ['SIGINT', 'SIGTERM'];
     signals.forEach((signal) => {
