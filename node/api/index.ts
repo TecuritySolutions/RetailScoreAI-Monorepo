@@ -1,15 +1,18 @@
+import awsLambdaFastify from '@fastify/aws-lambda';
 import { buildApp } from '../src/app.js';
-import { IncomingMessage, ServerResponse } from 'http';
+import type { APIGatewayProxyEvent, Context, Callback } from 'aws-lambda';
 
-let appInstance: Awaited<ReturnType<typeof buildApp>> | null = null;
+let handler: ReturnType<typeof awsLambdaFastify> | null = null;
 
-export default async function handler(req: IncomingMessage, res: ServerResponse) {
-  // Initialize app instance once (singleton pattern for serverless)
-  if (!appInstance) {
-    appInstance = await buildApp();
-    await appInstance.ready();
+async function getHandler() {
+  if (!handler) {
+    const app = await buildApp();
+    handler = awsLambdaFastify(app);
   }
+  return handler;
+}
 
-  // Forward the request to Fastify.
-  appInstance.server.emit('request', req, res);
+export default async function (event: APIGatewayProxyEvent, context: Context, callback: Callback): Promise<void> {
+  const h = await getHandler();
+  return h(event, context, callback);
 }
