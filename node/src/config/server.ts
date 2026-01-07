@@ -9,22 +9,9 @@ import { env } from './env.js';
 
 export function buildServer() {
   const fastify = Fastify({
-    logger:
-      env.NODE_ENV === 'development'
-        ? {
-            level: env.LOG_LEVEL,
-            transport: {
-              target: 'pino-pretty',
-              options: {
-                translateTime: 'HH:MM:ss Z',
-                ignore: 'pid,hostname',
-                colorize: true,
-              },
-            },
-          }
-        : {
-            level: env.LOG_LEVEL,
-          },
+    logger: {
+      level: env.LOG_LEVEL,
+    },
   });
 
   // Security: Helmet for security headers
