@@ -34,3 +34,6 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   return fastify;
 }
+
+// Export default for Vercel serverless detection
+export default buildApp;
