@@ -10,6 +10,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     await appInstance.ready();
   }
 
-  // Forward the request to Fastify
+  // Forward the request to Fastify.
   appInstance.server.emit('request', req, res);
 }
