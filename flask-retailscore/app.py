@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 # =========================
 # ROUTES
 # =========================
-@app.route("/predict", methods=["POST"])
+@app.route("/api/predict", methods=["POST"])
 def predict():
     try:
         data = request.get_json(force=True)
@@ -50,6 +50,8 @@ def predict():
 # =========================
 # ENTRY POINT
 # =========================
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+# Vercel serverless deployment: app instance is automatically detected
+# Uncomment below for local development only
+# if __name__ == "__main__":
+#     port = int(os.environ.get("PORT", 5000))
+#     app.run(host="0.0.0.0", port=port)
