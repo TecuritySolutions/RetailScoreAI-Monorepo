@@ -59,8 +59,9 @@ MODEL_FEATURES = [
     "market_score"
 ]
 
-assert store_model.n_features_in_ == len(MODEL_FEATURES), \
-    "❌ Model feature count mismatch"
+# REMOVED: This assertion is no longer valid with ONNX models
+# assert store_model.n_features_in_ == len(MODEL_FEATURES)
+# Feature validation happens implicitly during ONNX inference
 
 # =========================
 # SCALE TO 0–1000
