@@ -32,6 +32,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   await fastify.register(assessmentRoutes, { prefix: '/api/assessments' });
   await fastify.register(userAssessmentRoutes, { prefix: '/api/user' });
 
+  // Wait for all plugins to be registered before Vercel wraps the instance
+  await fastify.ready();
+
   return fastify;
 }
 
