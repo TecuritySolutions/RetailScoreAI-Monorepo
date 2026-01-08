@@ -2,7 +2,7 @@ import os
 import logging
 import pandas as pd
 import numpy as np
-import joblib
+import onnxruntime as ort
 
 # =========================
 # LOGGING CONFIG
@@ -19,14 +19,14 @@ logger = logging.getLogger(__name__)
 # =========================
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-DATA_PATH = os.path.join(BASE_DIR, "data", "retail_data_with_area_type.xlsx")
+DATA_PATH = os.path.join(BASE_DIR, "data", "retail_data_with_area_type.csv")
 MODEL_DIR = os.path.join(BASE_DIR, "Pikels")
 
 # =========================
 # LOAD DATA (ONCE)
 # =========================
 try:
-    df = pd.read_excel(DATA_PATH)
+    df = pd.read_csv(DATA_PATH)
     logger.info("Retail data loaded successfully")
 except Exception as e:
     logger.error("Failed to load retail data")
@@ -36,12 +36,12 @@ except Exception as e:
 # LOAD MODELS
 # =========================
 try:
-    market_scaler = joblib.load(os.path.join(MODEL_DIR, "market_scaler.pkl"))
-    store_scaler = joblib.load(os.path.join(MODEL_DIR, "store_scaler.pkl"))
-    store_model = joblib.load(os.path.join(MODEL_DIR, "store_model.pkl"))
-    logger.info("Models loaded successfully")
+    market_scaler_session = ort.InferenceSession(os.path.join(MODEL_DIR, "market_scaler.onnx"))
+    store_scaler_session = ort.InferenceSession(os.path.join(MODEL_DIR, "store_scaler.onnx"))
+    store_model_session = ort.InferenceSession(os.path.join(MODEL_DIR, "store_model.onnx"))
+    logger.info("ONNX models loaded successfully")
 except Exception as e:
-    logger.error("Failed to load ML models")
+    logger.error("Failed to load ONNX models")
     raise e
 
 # =========================
@@ -134,8 +134,12 @@ def calculate_market_score(pincode_data, area_type):
         "area_type_encoded": area_encoded
     }])
 
-    market_input = market_input[market_scaler.feature_names_in_]
-    scaled = market_scaler.transform(market_input)
+    # Get input/output names for ONNX model
+    input_name = market_scaler_session.get_inputs()[0].name
+    output_name = market_scaler_session.get_outputs()[0].name
+
+    # Run ONNX inference
+    scaled = market_scaler_session.run([output_name], {input_name: market_input.values.astype(np.float32)})[0]
 
     return round(float(np.mean(scaled)), 2)
 
@@ -159,10 +163,24 @@ def calculate_store_score(inputs, market_score, pincode_data, area_type):
 
     X = X[MODEL_FEATURES]
 
-    scale_cols = store_scaler.feature_names_in_
-    X[scale_cols] = store_scaler.transform(X[scale_cols])
+    # Get input/output names for ONNX models
+    scaler_input_name = store_scaler_session.get_inputs()[0].name
+    scaler_output_name = store_scaler_session.get_outputs()[0].name
 
-    raw_prediction = float(store_model.predict(X.values)[0])
+    model_input_name = store_model_session.get_inputs()[0].name
+    model_output_name = store_model_session.get_outputs()[0].name
+
+    # Scale features using ONNX
+    scaled_features = store_scaler_session.run(
+        [scaler_output_name],
+        {scaler_input_name: X.values.astype(np.float32)}
+    )[0]
+
+    # Predict using ONNX
+    raw_prediction = store_model_session.run(
+        [model_output_name],
+        {model_input_name: scaled_features}
+    )[0][0][0]
 
     # =========================
     # BUSINESS RULES

@@ -10,3 +10,7 @@ tests/
 .pytest_cache/
 *.log
 .DS_Store
+*.xlsx
+*.pkl
+convert_to_csv.py
+convert_models_to_onnx.py
