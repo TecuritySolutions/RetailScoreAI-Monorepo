@@ -15,6 +15,15 @@ logger = logging.getLogger(__name__)
 # =========================
 # ROUTES
 # =========================
+
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "status": "success",
+        "message": "Welcome to the Retail Store Success Prediction API!"
+    })
+
+
 @app.route("/api/predict", methods=["POST"])
 def predict():
     try:
