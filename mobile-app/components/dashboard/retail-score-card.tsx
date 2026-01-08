@@ -1,145 +1,241 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Card } from '@/components/ui/card';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Animatable from 'react-native-animatable';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { DashboardColors } from '@/constants/theme';
+import { DashboardColors, Shadows } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { GaugeChart } from './gauge-chart';
 
 interface RetailScoreCardProps {
   storeName: string;
   score: number;
+  maxScore: number;
   rating: number;
   badge: string;
   trending?: 'up' | 'down';
 }
 
-export function RetailScoreCard({ storeName, score, rating, badge, trending }: RetailScoreCardProps) {
+export function RetailScoreCard({
+  storeName,
+  score,
+  maxScore,
+  rating,
+  badge,
+  trending,
+}: RetailScoreCardProps) {
   const colorScheme = useColorScheme();
   const colors = DashboardColors[colorScheme ?? 'light'];
 
   const renderStars = () => {
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 !== 0;
+
     return (
       <View style={styles.starsContainer}>
-        {[1, 2, 3, 4, 5].map((star) => (
-          <IconSymbol
-            key={star}
-            name="star.fill"
-            size={16}
-            color={star <= rating ? '#F59E0B' : '#D1D5DB'}
-          />
-        ))}
+        {[1, 2, 3, 4, 5].map((star) => {
+          if (star <= fullStars) {
+            return (
+              <IconSymbol key={star} name="star.fill" size={18} color={colors.warning} />
+            );
+          } else if (star === fullStars + 1 && hasHalfStar) {
+            return (
+              <IconSymbol key={star} name="star.leadinghalf.filled" size={18} color={colors.warning} />
+            );
+          } else {
+            return (
+              <IconSymbol key={star} name="star" size={18} color={colors.textMuted} />
+            );
+          }
+        })}
+        <Text style={[styles.ratingText, { color: colors.textSecondary }]}>{rating.toFixed(1)}</Text>
       </View>
     );
   };
 
+  const getBadgeIcon = () => {
+    if (badge.toLowerCase().includes('credit')) return '🎯';
+    if (badge.toLowerCase().includes('risky')) return '⚠️';
+    return '✓';
+  };
+
   return (
-    <Card style={styles.card}>
-      <View style={styles.header}>
-        <Text style={[styles.label, { color: colorScheme === 'dark' ? '#D1D5DB' : '#6B7280' }]}>
-          Retail Score
-        </Text>
-        <Text style={[styles.storeName, { color: colorScheme === 'dark' ? '#F9FAFB' : '#1F2937' }]}>{storeName}</Text>
-      </View>
+    <Animatable.View animation="fadeInUp" duration={800} delay={500}>
+      <View style={[styles.card, Shadows.large]}>
+        {/* Gradient Border Effect */}
+        <LinearGradient
+          colors={[colors.primaryGradientStart, colors.primaryGradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientBorder}
+        >
+          <View style={[styles.innerCard, { backgroundColor: colors.cardBackground }]}>
+            {/* Header */}
+            <View style={styles.header}>
+              <View style={styles.headerLeft}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>⭐ Featured Store</Text>
+              </View>
+            </View>
 
-      <View style={styles.content}>
-        <View style={styles.leftSection}>
-          <View style={styles.storeIconContainer}>
-            <Text style={styles.storeIcon}>🏪</Text>
-          </View>
-          <View>
-            <Text style={[styles.badgeText, { color: colors.accent }]}>{badge}</Text>
-            {renderStars()}
-          </View>
-        </View>
+            {/* Store Name and Icon */}
+            <View style={styles.storeInfo}>
+              <View style={[styles.storeIconContainer, { backgroundColor: colors.primary + '15' }]}>
+                <Text style={styles.storeIcon}>🏪</Text>
+              </View>
+              <Text style={[styles.storeName, { color: colors.textPrimary }]}>{storeName}</Text>
+            </View>
 
-        <View style={[styles.scoreContainer, { backgroundColor: colors.scoreHigh }]}>
-          <Text style={styles.scoreValue}>{score}</Text>
-          <View style={styles.scoreStars}>
-            {[1, 2, 3, 4].map((star) => (
-              <IconSymbol key={star} name="star.fill" size={12} color="#FFFFFF" />
-            ))}
+            {/* Gauge and Score */}
+            <View style={styles.gaugeSection}>
+              <GaugeChart score={score} maxScore={maxScore} size={160} />
+            </View>
+
+            {/* Rating Stars */}
+            <View style={styles.ratingSection}>{renderStars()}</View>
+
+            {/* Badge and Trending */}
+            <View style={styles.badgesRow}>
+              <View style={[styles.badge, { backgroundColor: colors.accent + '20' }]}>
+                <Text style={styles.badgeIcon}>{getBadgeIcon()}</Text>
+                <Text style={[styles.badgeText, { color: colors.accent }]}>{badge}</Text>
+              </View>
+
+              {trending && (
+                <View style={[styles.trendBadge, { backgroundColor: colors.scoreHigh + '20' }]}>
+                  <IconSymbol
+                    name={trending === 'up' ? 'arrow.up.right' : 'arrow.down.right'}
+                    size={14}
+                    color={trending === 'up' ? colors.scoreHigh : colors.scoreLow}
+                  />
+                  <Text style={[styles.trendText, { color: colors.scoreHigh }]}>
+                    Trending {trending === 'up' ? 'Up' : 'Down'}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* CTA */}
+            <TouchableOpacity style={[styles.ctaButton, { borderColor: colors.primary }]}>
+              <Text style={[styles.ctaText, { color: colors.primary }]}>
+                View Full Analysis
+              </Text>
+              <IconSymbol name="arrow.right" size={14} color={colors.primary} />
+            </TouchableOpacity>
           </View>
-          {trending && (
-            <IconSymbol
-              name="arrow.up.right"
-              size={20}
-              color="#FFFFFF"
-              style={styles.trendingIcon}
-            />
-          )}
-        </View>
+        </LinearGradient>
       </View>
-    </Card>
+    </Animatable.View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    marginVertical: 16,
+    marginVertical: 12,
+    padding: 0,
+  },
+  gradientBorder: {
+    borderRadius: 16,
+    padding: 2,
+  },
+  innerCard: {
+    borderRadius: 14,
+    padding: 20,
   },
   header: {
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 4,
+    fontWeight: '600',
   },
-  storeName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
-  content: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  leftSection: {
+  storeInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    marginBottom: 20,
   },
   storeIconContainer: {
-    width: 60,
-    height: 60,
+    width: 50,
+    height: 50,
     borderRadius: 12,
-    backgroundColor: '#FEF3C7',
     justifyContent: 'center',
     alignItems: 'center',
   },
   storeIcon: {
-    fontSize: 32,
+    fontSize: 28,
   },
-  badgeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
+  storeName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  gaugeSection: {
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  ratingSection: {
+    alignItems: 'center',
+    marginBottom: 16,
   },
   starsContainer: {
     flexDirection: 'row',
-    gap: 2,
-  },
-  scoreContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
     alignItems: 'center',
-    position: 'relative',
+    gap: 3,
   },
-  scoreValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
+  ratingText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
   },
-  scoreStars: {
+  badgesRow: {
     flexDirection: 'row',
-    gap: 2,
+    gap: 8,
+    marginBottom: 16,
   },
-  trendingIcon: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    gap: 6,
+    flex: 1,
+  },
+  badgeIcon: {
+    fontSize: 16,
+  },
+  badgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  trendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    gap: 4,
+    flex: 1,
+  },
+  trendText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  ctaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    gap: 6,
+  },
+  ctaText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

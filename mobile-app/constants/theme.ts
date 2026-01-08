@@ -44,6 +44,25 @@ export const DashboardColors = {
     scoreHigh: '#10B981',
     scoreModerate: '#F59E0B',
     scoreLow: '#EF4444',
+
+    // New gradients for enhanced components
+    primaryGradientStart: '#3B82F6',
+    primaryGradientEnd: '#06B6D4',
+    accentGradientStart: '#10B981',
+    accentGradientEnd: '#34D399',
+
+    // Shadow and depth
+    shadowColor: '#000000',
+    shadowOpacity: 0.1,
+
+    // Ring colors
+    ringTrack: '#E5E7EB',
+    ringProgress: '#3B82F6',
+
+    // Text colors
+    textPrimary: '#111827',
+    textSecondary: '#6B7280',
+    textMuted: '#9CA3AF',
   },
   dark: {
     primary: '#60A5FA',
@@ -61,7 +80,63 @@ export const DashboardColors = {
     scoreHigh: '#34D399',
     scoreModerate: '#FBBF24',
     scoreLow: '#F87171',
+
+    // New gradients for enhanced components
+    primaryGradientStart: '#60A5FA',
+    primaryGradientEnd: '#22D3EE',
+    accentGradientStart: '#34D399',
+    accentGradientEnd: '#10B981',
+
+    // Shadow and depth
+    shadowColor: '#000000',
+    shadowOpacity: 0.3,
+
+    // Ring colors
+    ringTrack: '#374151',
+    ringProgress: '#60A5FA',
+
+    // Text colors
+    textPrimary: '#F9FAFB',
+    textSecondary: '#D1D5DB',
+    textMuted: '#9CA3AF',
   },
+};
+
+// Shadow styles for iOS and Android
+export const Shadows = {
+  small: Platform.select({
+    ios: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+    },
+    android: {
+      elevation: 2,
+    },
+  }),
+  medium: Platform.select({
+    ios: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+    },
+    android: {
+      elevation: 4,
+    },
+  }),
+  large: Platform.select({
+    ios: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+    },
+    android: {
+      elevation: 8,
+    },
+  }),
 };
 
 export const Fonts = Platform.select({

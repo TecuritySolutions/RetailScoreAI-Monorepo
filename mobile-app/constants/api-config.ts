@@ -1,5 +1,5 @@
 export const API_CONFIG = {
-  BASE_URL: 'http://192.168.0.149:3000',
+  BASE_URL: 'https://retail-score-ai-monorepo.vercel.app',
   ENDPOINTS: {
     SEND_OTP: '/api/auth/send-otp',
     VERIFY_OTP: '/api/auth/verify-otp',

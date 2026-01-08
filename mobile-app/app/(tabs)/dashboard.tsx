@@ -5,6 +5,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/hooks/use-auth';
 import { DashboardColors } from '@/constants/theme';
 import { MOCK_DASHBOARD_DATA } from '@/constants/mock-data';
+import { PortfolioHealthRing } from '@/components/dashboard/portfolio-health-ring';
+import { DistributionBar } from '@/components/dashboard/distribution-bar';
 import { MetricCard } from '@/components/dashboard/metric-card';
 import { RetailScoreCard } from '@/components/dashboard/retail-score-card';
 import { ActionButton } from '@/components/dashboard/action-button';
@@ -48,93 +50,95 @@ export default function DashboardScreen() {
       </LinearGradient>
 
       <View style={styles.content}>
-        {/* Metrics Row */}
+        {/* Portfolio Health Ring - Hero Section */}
+        <PortfolioHealthRing
+          score={MOCK_DASHBOARD_DATA.portfolioHealth.overallScore}
+          weeklyChange={MOCK_DASHBOARD_DATA.portfolioHealth.weeklyChange}
+          trend={MOCK_DASHBOARD_DATA.portfolioHealth.trend}
+          totalOutlets={MOCK_DASHBOARD_DATA.myRetailScores.totalOutlets}
+          highScores={MOCK_DASHBOARD_DATA.myRetailScores.highScores}
+          lowScores={MOCK_DASHBOARD_DATA.myRetailScores.lowScores}
+        />
+
+        {/* Distribution Bar */}
+        <DistributionBar
+          highScores={MOCK_DASHBOARD_DATA.myRetailScores.highScores}
+          moderateScores={MOCK_DASHBOARD_DATA.myRetailScores.moderateScores}
+          lowScores={MOCK_DASHBOARD_DATA.myRetailScores.lowScores}
+        />
+
+        {/* SAM Traders Performance Card with Sparkline */}
         <View style={styles.metricsRow}>
           <MetricCard
-            title="My Retail Scores"
-            value={`${MOCK_DASHBOARD_DATA.myRetailScores.totalOutlets}`}
-            subtitle="Outlets"
-          />
-          <View style={styles.spacing} />
-          <MetricCard
-            title="SAM Traders"
+            title="SAM Traders Performance"
             value={`${MOCK_DASHBOARD_DATA.samTraders.score}/100`}
-            subtitle="Outlets"
+            subtitle={`📍 ${MOCK_DASHBOARD_DATA.samTraders.totalOutlets} Outlets`}
+            trendData={MOCK_DASHBOARD_DATA.samTraders.trendData}
+            showProgress
+            progress={MOCK_DASHBOARD_DATA.samTraders.score}
+            insight="Above average performance"
           />
-        </View>
-
-        {/* Additional Metrics */}
-        <View style={styles.additionalMetrics}>
-          <View style={styles.metricBadge}>
-            <Text style={[styles.badgeIcon, { color: colors.scoreHigh }]}>✓</Text>
-            <Text style={[styles.badgeText, { color: colorScheme === 'dark' ? '#F9FAFB' : '#1F2937' }]}>
-              {MOCK_DASHBOARD_DATA.myRetailScores.highScores} High
-            </Text>
-          </View>
-          <View style={styles.metricBadge}>
-            <Text style={[styles.badgeIcon, { color: colors.scoreLow }]}>✕</Text>
-            <Text style={[styles.badgeText, { color: colorScheme === 'dark' ? '#F9FAFB' : '#1F2937' }]}>
-              {MOCK_DASHBOARD_DATA.myRetailScores.lowScores} Low
-            </Text>
-          </View>
-          <View style={styles.metricBadge}>
-            <Text style={[styles.badgeIcon, { color: colors.scoreHigh }]}>↑</Text>
-            <Text style={[styles.badgeText, { color: colorScheme === 'dark' ? '#F9FAFB' : '#1F2937' }]}>
-              {MOCK_DASHBOARD_DATA.samTraders.weeklyChange}% This Week
-            </Text>
-          </View>
         </View>
 
         {/* Featured Retail Score */}
         <RetailScoreCard
           storeName={MOCK_DASHBOARD_DATA.featuredStore.name}
           score={MOCK_DASHBOARD_DATA.featuredStore.score}
+          maxScore={MOCK_DASHBOARD_DATA.featuredStore.maxScore}
           rating={MOCK_DASHBOARD_DATA.featuredStore.rating}
           badge={MOCK_DASHBOARD_DATA.featuredStore.badge}
           trending={MOCK_DASHBOARD_DATA.featuredStore.trending}
         />
 
-        {/* Action Buttons */}
-        <View style={styles.actionsRow}>
-          <ActionButton
-            label="Scan GSTIN"
-            icon="barcode"
-            color={colors.primary}
-            onPress={() => handleAction('Scan GSTIN')}
-          />
-          <View style={styles.spacing} />
-          <ActionButton
-            label="Store Locator"
-            icon="location.pin"
-            color={colors.accent}
-            onPress={() => handleAction('Store Locator')}
-          />
-          <View style={styles.spacing} />
-          <ActionButton
-            label="Evaluate"
-            icon="checklist"
-            color={colors.warning}
-            onPress={() => handleAction('Evaluate')}
-          />
+        {/* Quick Actions Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Quick Actions</Text>
+          <View style={styles.actionsRow}>
+            <ActionButton
+              label="Scan GSTIN"
+              icon="barcode"
+              color={colors.primary}
+              gradientEnd={colors.secondary}
+              onPress={() => handleAction('Scan GSTIN')}
+            />
+            <View style={styles.spacing} />
+            <ActionButton
+              label="Store Locator"
+              icon="location.pin"
+              color={colors.accent}
+              gradientEnd={colors.accentGradientEnd}
+              onPress={() => handleAction('Store Locator')}
+            />
+            <View style={styles.spacing} />
+            <ActionButton
+              label="New Evaluation"
+              icon="checklist"
+              color={colors.warning}
+              onPress={() => handleAction('Evaluate')}
+            />
+          </View>
         </View>
 
         {/* Recent Assessments */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colorScheme === 'dark' ? '#F9FAFB' : '#1F2937' }]}>
-            Recent Assessments
-          </Text>
-          <View style={[styles.assessmentsList, { backgroundColor: colors.cardBackground }]}>
-            {MOCK_DASHBOARD_DATA.recentAssessments.map((assessment) => (
-              <AssessmentItem
-                key={assessment.id}
-                storeName={assessment.storeName}
-                score={assessment.score}
-                rating={assessment.rating}
-                badge={assessment.badge}
-                status={assessment.status}
-              />
-            ))}
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+              Recent Assessments
+            </Text>
+            <Text style={[styles.viewAllLink, { color: colors.primary }]}>View All →</Text>
           </View>
+          {MOCK_DASHBOARD_DATA.recentAssessments.map((assessment) => (
+            <AssessmentItem
+              key={assessment.id}
+              storeName={assessment.storeName}
+              score={assessment.score}
+              maxScore={assessment.maxScore}
+              rating={assessment.rating}
+              badge={assessment.badge}
+              status={assessment.status}
+              daysAgo={assessment.daysAgo}
+            />
+          ))}
         </View>
       </View>
     </ScrollView>
@@ -169,54 +173,36 @@ const styles = StyleSheet.create({
     color: '#E5E7EB',
   },
   content: {
-    paddingHorizontal: 24,
     paddingTop: 8,
     paddingBottom: 32,
   },
   metricsRow: {
-    flexDirection: 'row',
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    marginBottom: 8,
   },
   spacing: {
     width: 12,
   },
-  additionalMetrics: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 8,
-  },
-  metricBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  badgeIcon: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  badgeText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
   actionsRow: {
     flexDirection: 'row',
-    marginVertical: 16,
+    marginTop: 12,
   },
   section: {
-    marginTop: 24,
+    marginTop: 20,
+    paddingHorizontal: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 16,
   },
-  assessmentsList: {
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+  viewAllLink: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
