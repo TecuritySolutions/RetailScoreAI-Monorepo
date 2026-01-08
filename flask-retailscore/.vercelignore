@@ -6,3 +6,7 @@ __pycache__/
 Procfile
 README.md
 .env.local
+tests/
+.pytest_cache/
+*.log
+.DS_Store
