@@ -1,0 +1,571 @@
+# RetailScoreAI Monorepo
+
+## Overview
+
+RetailScoreAI is an AI-powered platform for assessing retail store viability and success potential in India. The system combines machine learning predictions with comprehensive assessment management, providing credit risk analysis and market insights for retail businesses.
+
+This monorepo contains three services:
+- **Node Service**: API Gateway handling authentication, user management, and assessment storage
+- **Flask Service**: ML inference engine predicting retail store success based on location and store characteristics
+- **Mobile App**: React Native mobile application for iOS/Android providing user interface and data visualization
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Mobile App (Expo)                        │
+│              React Native + TypeScript                       │
+│         (Auth, Dashboard, Assessments, Profile)              │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ HTTPS/REST API
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│                 Node Service (Fastify)                       │
+│         API Gateway + Authentication + Storage               │
+│      (OTP Auth, JWT Tokens, User/Assessment CRUD)            │
+└───────────┬────────────────────────┬────────────────────────┘
+            │                        │
+            ↓                        ↓ (Future Integration)
+    ┌──────────────┐        ┌──────────────────────┐
+    │  PostgreSQL  │        │   Flask ML Service   │
+    │   Database   │        │   (ONNX Inference)   │
+    │              │        │   Store Predictions  │
+    └──────────────┘        └──────────────────────┘
+```
+
+**Current State**: Mobile App → Node API → PostgreSQL
+**Planned Integration**: Node will proxy ML prediction requests to Flask service
+
+---
+
+## Services
+
+### 1. Node Service (API Gateway)
+
+**Purpose**: Primary backend API gateway handling authentication, authorization, user management, and assessment data storage.
+
+**Tech Stack**:
+- Fastify 5.6 (high-performance web framework)
+- TypeScript 5.9
+- PostgreSQL with `pg` driver (connection pooling)
+- JWT authentication (@fastify/jwt)
+- SendGrid for OTP email delivery
+- Zod for runtime validation
+- Vitest for testing
+
+**Key Features**:
+- OTP-based email authentication (15-minute expiry)
+- JWT dual-token system (15min access + 7 day refresh)
+- User profile management
+- Assessment CRUD with pagination/filtering
+- Rate limiting (100 req/15min global, 3 OTP/30min per email)
+- Security middleware (Helmet, CORS)
+- OpenAPI/Swagger documentation
+
+**Database Tables**:
+- `users`: User profiles, subscription tiers, verification status
+- `otp_tokens`: Hashed OTPs with expiry and attempt tracking
+- `assessments`: Store assessments with scores, photos, tags
+
+**Key Files**:
+- [node/src/app.ts](node/src/app.ts) - Application factory and route registration
+- [node/src/config/server.ts](node/src/config/server.ts) - Fastify server configuration
+- [node/src/config/database.ts](node/src/config/database.ts) - PostgreSQL pool setup
+- [node/database-setup.sql](node/database-setup.sql) - Complete database schema
+- [node/.env.example](node/.env.example) - Environment variables template
+
+**API Endpoints**:
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/auth/send-otp` | POST | No | Send OTP to email |
+| `/api/auth/verify-otp` | POST | No | Verify OTP, get tokens |
+| `/api/auth/refresh-token` | POST | No | Refresh expired tokens |
+| `/api/user/profile` | GET | Yes | Get user profile |
+| `/api/user/profile` | PATCH | Yes | Update user profile |
+| `/api/user/assessments` | GET | Yes | List assessments (paginated) |
+| `/api/user/assessments/stats` | GET | Yes | Assessment statistics |
+| `/api/assessments` | POST | Yes | Create assessment |
+| `/api/assessments/:id` | GET | Yes | Get single assessment |
+| `/api/assessments/:id` | PATCH | Yes | Update assessment |
+| `/api/assessments/:id` | DELETE | Yes | Delete assessment |
+
+**Development Commands**:
+```bash
+cd node
+npm install
+cp .env.example .env  # Configure environment variables
+npm run dev           # Start development server (port 3000)
+npm run build         # Build for production
+npm run test          # Run tests with Vitest
+```
+
+---
+
+### 2. Flask Service (ML Prediction Engine)
+
+**Purpose**: Standalone ML inference service predicting retail store success using ONNX-optimized models with location demographics and store characteristics.
+
+**Tech Stack**:
+- Flask 3.0
+- ONNX Runtime 1.20.1 (fast inference)
+- Pandas 2.1.4 (data handling)
+- NumPy 1.26.2
+- Python 3.11
+- Vercel serverless deployment
+
+**Key Features**:
+- Store success prediction (0-1000 score)
+- Market potential scoring (0-1)
+- 19,096 pincode location database with demographics
+- 3-model ONNX ensemble (market_scaler, store_scaler, store_model)
+- Business rules: competition penalties, urban area boosts
+- Lightweight deployment (~73MB vs ~250MB with scikit-learn)
+
+**Prediction Inputs**:
+- `pincode`: Indian postal code (required)
+- `area_type`: "Urban" | "Semi-Urban" | "Rural"
+- `competitors`: Number of competing stores
+- `employee_count`: Store employee count
+- `stock_availability`: Stock availability score
+- `shoe_size`: "Small" | "Medium" | "Large" (store size)
+
+**Key Files**:
+- [flask-retailscore/app.py](flask-retailscore/app.py) - Flask application, API routes
+- [flask-retailscore/utils/predictor.py](flask-retailscore/utils/predictor.py) - ML inference pipeline
+- [flask-retailscore/Pikels/](flask-retailscore/Pikels/) - ONNX model files (.onnx)
+- [flask-retailscore/data/retail_data_with_area_type.csv](flask-retailscore/data/retail_data_with_area_type.csv) - Location database
+- [flask-retailscore/requirements.txt](flask-retailscore/requirements.txt) - Python dependencies
+- [flask-retailscore/vercel.json](flask-retailscore/vercel.json) - Vercel deployment config
+
+**API Endpoints**:
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Health check / welcome message |
+| `/docs` | GET | OpenAPI 3.0 specification |
+| `/api/predict` | POST | Store success prediction |
+
+**Development Commands**:
+```bash
+cd flask-retailscore
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python app.py             # Start development server
+```
+
+---
+
+### 3. Mobile App (React Native Client)
+
+**Purpose**: Cross-platform mobile application (iOS/Android) providing user interface for authentication, dashboard visualization, and assessment management.
+
+**Tech Stack**:
+- React Native 0.81.5
+- Expo ~54.0.30 (managed workflow)
+- TypeScript 5.9
+- Expo Router 6.0 (file-based routing)
+- React 19.1.0
+- Expo Secure Store (encrypted token storage)
+- React Navigation (bottom tabs)
+
+**Key Features**:
+- Email OTP authentication with countdown timer
+- Secure JWT token storage and auto-refresh
+- Dashboard with portfolio health metrics
+- Score distribution visualizations
+- User profile management
+- Assessment list (in progress)
+- Dark mode support
+
+**Navigation Structure**:
+```
+Root (_layout.tsx)
+├── Splash Screen (index.tsx)
+├── Auth Group (auth)
+│   ├── Login (login.tsx)
+│   └── Verify OTP (verify-otp.tsx)
+└── Tabs Group (tabs) [Protected]
+    ├── Dashboard (dashboard.tsx)
+    ├── Assessments (assessments.tsx)
+    ├── Insights (insights.tsx)
+    └── Profile (profile.tsx)
+```
+
+**Key Files**:
+- [mobile-app/app/_layout.tsx](mobile-app/app/_layout.tsx) - Root navigator, auth guards
+- [mobile-app/app/(auth)/login.tsx](mobile-app/app/(auth)/login.tsx) - Login screen
+- [mobile-app/app/(auth)/verify-otp.tsx](mobile-app/app/(auth)/verify-otp.tsx) - OTP verification
+- [mobile-app/app/(tabs)/dashboard.tsx](mobile-app/app/(tabs)/dashboard.tsx) - Main dashboard
+- [mobile-app/contexts/auth-context.tsx](mobile-app/contexts/auth-context.tsx) - Authentication state
+- [mobile-app/services/api/client.ts](mobile-app/services/api/client.ts) - API client with token refresh
+- [mobile-app/services/api/auth.api.ts](mobile-app/services/api/auth.api.ts) - Auth API calls
+- [mobile-app/package.json](mobile-app/package.json) - Dependencies and scripts
+
+**Development Commands**:
+```bash
+cd mobile-app
+npm install
+npx expo start          # Start Metro bundler
+npx expo start --ios    # Run on iOS simulator
+npx expo start --android # Run on Android emulator
+npm run lint            # Run ESLint
+```
+
+---
+
+## Development Setup
+
+### Prerequisites
+
+- **Node.js**: 18+ (for Node service and mobile app)
+- **Python**: 3.11 (for Flask service)
+- **PostgreSQL**: 14+ (for database)
+- **Expo CLI**: Install globally with `npm install -g expo-cli`
+- **iOS/Android**: Xcode (Mac) or Android Studio for mobile development
+- **Git**: Version control
+
+### Installation Steps
+
+1. **Clone Repository**:
+```bash
+git clone <repository-url>
+cd RetailScoreAI-Monorepo
+```
+
+2. **Node Service Setup**:
+```bash
+cd node
+npm install
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+3. **Flask Service Setup**:
+```bash
+cd flask-retailscore
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+4. **Mobile App Setup**:
+```bash
+cd mobile-app
+npm install
+```
+
+### Environment Configuration
+
+**Node Service (.env)**:
+Required variables in [node/.env](node/.env):
+```env
+NODE_ENV=development
+PORT=3000
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8081
+
+DATABASE_URL=postgresql://user:password@localhost:5432/retailscore_db
+
+SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxx
+SENDGRID_FROM_EMAIL=noreply@retailscore.ai
+SENDGRID_FROM_NAME=RetailScore AI
+
+JWT_ACCESS_SECRET=<32+ character random string>
+JWT_REFRESH_SECRET=<32+ character random string>
+JWT_ACCESS_EXPIRY=15m
+JWT_REFRESH_EXPIRY=7d
+
+OTP_EXPIRY_MINUTES=15
+OTP_RATE_LIMIT_COUNT=3
+OTP_RATE_LIMIT_WINDOW_MINUTES=30
+
+LOG_LEVEL=info
+```
+
+**Mobile App**: Update backend URL in [mobile-app/services/api/client.ts](mobile-app/services/api/client.ts) if needed (currently points to production Vercel URL).
+
+**Flask Service**: No environment variables required for local development.
+
+### Database Setup
+
+1. **Create PostgreSQL Database**:
+```bash
+createdb retailscore_db
+```
+
+2. **Run Migrations**:
+```bash
+cd node
+psql -d retailscore_db -f database-setup.sql
+```
+
+This creates:
+- `users` table with indexes
+- `otp_tokens` table with cleanup function
+- `assessments` table with triggers
+- Auto-update timestamp triggers
+
+### Running Locally
+
+**Start All Services**:
+
+1. **Database** (ensure PostgreSQL is running):
+```bash
+# Check status
+pg_isready
+
+# Start if needed (Mac with Homebrew)
+brew services start postgresql
+```
+
+2. **Node Service** (Terminal 1):
+```bash
+cd node
+npm run dev
+# Server runs on http://localhost:3000
+```
+
+3. **Flask Service** (Terminal 2):
+```bash
+cd flask-retailscore
+source venv/bin/activate
+python app.py
+# Server runs on http://127.0.0.1:5000
+```
+
+4. **Mobile App** (Terminal 3):
+```bash
+cd mobile-app
+npx expo start
+# Scan QR code with Expo Go app or press 'i' for iOS, 'a' for Android
+```
+
+---
+
+## Key File Locations
+
+### Node Service
+| Path | Description |
+|------|-------------|
+| `node/src/app.ts` | Main app factory, route registration |
+| `node/src/index.ts` | Entry point with graceful shutdown |
+| `node/src/config/server.ts` | Fastify configuration (CORS, JWT, Swagger) |
+| `node/src/config/database.ts` | PostgreSQL connection pool |
+| `node/src/controllers/` | HTTP request handlers |
+| `node/src/services/` | Business logic layer |
+| `node/src/repositories/` | Data access layer |
+| `node/src/schemas/` | Zod validation schemas |
+| `node/src/middleware/auth.middleware.ts` | JWT verification middleware |
+| `node/database-setup.sql` | Complete database schema |
+
+### Flask Service
+| Path | Description |
+|------|-------------|
+| `flask-retailscore/app.py` | Flask app, API routes |
+| `flask-retailscore/utils/predictor.py` | ML inference pipeline |
+| `flask-retailscore/Pikels/*.onnx` | ONNX model files |
+| `flask-retailscore/data/retail_data_with_area_type.csv` | 19K pincode database |
+| `flask-retailscore/vercel.json` | Vercel deployment config |
+
+### Mobile App
+| Path | Description |
+|------|-------------|
+| `mobile-app/app/_layout.tsx` | Root navigator, auth routing |
+| `mobile-app/app/(auth)/` | Authentication screens |
+| `mobile-app/app/(tabs)/` | Main app tabs (protected) |
+| `mobile-app/contexts/auth-context.tsx` | Auth state management |
+| `mobile-app/services/api/` | API service layer |
+| `mobile-app/components/ui/` | Reusable UI components |
+| `mobile-app/components/dashboard/` | Dashboard visualizations |
+
+---
+
+## Common Development Tasks
+
+### Adding a New API Endpoint (Node)
+
+1. **Define Schema** in `node/src/schemas/`:
+```typescript
+import { z } from 'zod';
+export const newEndpointSchema = z.object({
+  field: z.string()
+});
+```
+
+2. **Create Repository Method** in `node/src/repositories/`:
+```typescript
+export class Repository {
+  async newMethod() {
+    const result = await pool.query('SELECT ...');
+    return result.rows;
+  }
+}
+```
+
+3. **Create Service** in `node/src/services/`:
+```typescript
+export class Service {
+  async doSomething() {
+    return await repository.newMethod();
+  }
+}
+```
+
+4. **Create Controller** in `node/src/controllers/`:
+```typescript
+export const newController = async (request, reply) => {
+  const result = await service.doSomething();
+  return reply.send(result);
+};
+```
+
+5. **Add Route** in `node/src/routes/`:
+```typescript
+export async function routes(fastify) {
+  fastify.post('/endpoint', {
+    schema: { body: newEndpointSchema },
+    preHandler: [fastify.authenticateJWT]
+  }, newController);
+}
+```
+
+6. **Register Routes** in `node/src/app.ts`:
+```typescript
+await app.register(newRoutes, { prefix: '/api' });
+```
+
+### Creating a New Mobile Screen
+
+1. **Create Screen File** in `mobile-app/app/`:
+```typescript
+// app/new-screen.tsx
+export default function NewScreen() {
+  return <View><Text>New Screen</Text></View>;
+}
+```
+
+2. **Add to Navigation** (file-based routing handles automatically)
+
+3. **Link to Screen**:
+```typescript
+import { router } from 'expo-router';
+router.push('/new-screen');
+```
+
+### Updating ML Models (Flask)
+
+1. **Train new model** with scikit-learn
+2. **Convert to ONNX** using `convert_models_to_onnx.py`
+3. **Replace files** in `Pikels/` directory
+4. **Update predictor.py** if feature schema changes
+5. **Test locally** then deploy
+
+### Database Migrations
+
+1. **Write migration SQL** based on `database-setup.sql` patterns
+2. **Test locally**:
+```bash
+psql -d retailscore_db -f migration.sql
+```
+3. **Update schema file** for reference
+4. **Deploy to production** database
+
+---
+
+## Technology Stack
+
+### Node Service
+- **Framework**: Fastify 5.6.2
+- **Runtime**: Node.js 18+ (ES Modules)
+- **Language**: TypeScript 5.9.3
+- **Database**: PostgreSQL (pg 8.16.3)
+- **Auth**: JWT (@fastify/jwt 9.1.0), bcrypt 5.1.1
+- **Email**: SendGrid (@sendgrid/mail 8.1.6)
+- **Validation**: Zod 3.25.76
+- **Security**: @fastify/helmet, @fastify/cors, @fastify/rate-limit
+- **API Docs**: @fastify/swagger, @fastify/swagger-ui
+- **Testing**: Vitest 2.1.9
+- **Deployment**: Vercel (@vercel/node), AWS Lambda support
+
+### Flask Service
+- **Framework**: Flask 3.0.0
+- **ML Runtime**: onnxruntime 1.20.1
+- **Data Processing**: pandas 2.1.4, numpy 1.26.2
+- **Python**: 3.11
+- **Deployment**: Vercel (serverless)
+
+### Mobile App
+- **Framework**: React Native 0.81.5, Expo 54.0.30
+- **Language**: TypeScript 5.9.2
+- **Routing**: Expo Router 6.0.21
+- **Navigation**: @react-navigation/native 7.1.8, @react-navigation/bottom-tabs 7.4.0
+- **Storage**: expo-secure-store 15.0.8
+- **UI**: expo-linear-gradient, react-native-reanimated, @expo/vector-icons
+- **Linting**: ESLint 9.25.0
+
+---
+
+## Integration Notes
+
+### Current Architecture
+- **Mobile App** → **Node Service** → **PostgreSQL**
+- Flask service runs independently (no integration)
+
+### Planned Integration (Node ↔ Flask)
+
+The Flask ML service should be integrated through the Node gateway to:
+1. Provide authenticated access to predictions
+2. Log prediction requests in database
+3. Cache prediction results
+4. Apply business logic and rate limiting
+
+**Implementation Steps**:
+1. Add Flask API client in Node service (e.g., `node/src/services/prediction.service.ts`)
+2. Create Node endpoint: `POST /api/predictions` (authenticated)
+3. Proxy request to Flask `/api/predict` endpoint
+4. Store prediction results in new `predictions` table
+5. Return combined data to mobile app
+
+**Example Flow**:
+```
+Mobile App → POST /api/predictions (with JWT)
+    ↓
+Node Service validates token
+    ↓
+Node calls Flask POST /api/predict
+    ↓
+Flask returns prediction
+    ↓
+Node stores result in database
+    ↓
+Node returns to mobile app
+```
+
+### Security Considerations
+- JWT tokens: 15min access, 7 day refresh (auto-refresh on expiry)
+- OTP: bcrypt hashed, max 5 attempts, 15min expiry, single-use
+- Rate limiting: 100 req/15min global, 3 OTP/30min per email
+- CORS: Configured per environment (ALLOWED_ORIGINS)
+- SQL: Parameterized queries prevent injection
+- Secrets: 32+ character random strings for JWT secrets
+
+### Deployment
+- **Node**: Vercel serverless (vercel.json configured)
+- **Flask**: Vercel serverless (vercel.json configured)
+- **Mobile**: EAS Build (eas.json configured)
+- **Database**: External PostgreSQL (DATABASE_URL)
+
+### Testing
+- **Node**: Vitest with coverage (`npm run test`, `npm run test:coverage`)
+- **Flask**: Manual testing (no test suite currently)
+- **Mobile**: Manual testing (no test suite currently)
+
+---
+
+## Additional Resources
+
+- **Git Branch**: `main` (clean working tree)
+- **Production URL**: https://retail-score-ai-monorepo.vercel.app
+- **Package Manager**: npm (Node/Mobile), pip (Flask)
+- **Monorepo Structure**: Independent services, no shared packages currently
+
+For questions or issues, refer to service-specific README files or documentation within each directory.
