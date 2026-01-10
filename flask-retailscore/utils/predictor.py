@@ -150,19 +150,22 @@ def calculate_market_score(pincode_data, area_type):
 def calculate_store_score(inputs, market_score, pincode_data, area_type):
     area_encoded = encode_area_type(area_type)
 
-    X = pd.DataFrame([{
+    # Separate features into location and store-specific
+    location_features = {
         "total_population": pincode_data["total_population"],
         "male_population": pincode_data["male_population"],
         "population_density": pincode_data["population_density"],
         "area_type_encoded": area_encoded,
+        "market_score": market_score
+    }
+
+    # These 4 features go to store_scaler (verified from pickle: store_scaler.feature_names_in_)
+    store_features = pd.DataFrame([{
         "shop_size": normalize_shop_size(inputs["shoe_size"]),
         "Stoks availabity": inputs["stock_availability"],
         "employee_count": inputs["employee_count"],
-        "Competitors": inputs["competitors"],
-        "market_score": market_score
+        "Competitors": inputs["competitors"]
     }])
-
-    X = X[MODEL_FEATURES]
 
     # Get input/output names for ONNX models
     scaler_input_name = store_scaler_session.get_inputs()[0].name
@@ -171,16 +174,31 @@ def calculate_store_score(inputs, market_score, pincode_data, area_type):
     model_input_name = store_model_session.get_inputs()[0].name
     model_output_name = store_model_session.get_outputs()[0].name
 
-    # Scale features using ONNX
-    scaled_features = store_scaler_session.run(
+    # Scale ONLY the 4 store-specific features
+    scaled_store_features = store_scaler_session.run(
         [scaler_output_name],
-        {scaler_input_name: X.values.astype(np.float32)}
+        {scaler_input_name: store_features.values.astype(np.float32)}
     )[0]
 
-    # Predict using ONNX
+    # Combine all 9 features for final model (order must match MODEL_FEATURES)
+    final_features = pd.DataFrame([{
+        "total_population": location_features["total_population"],
+        "male_population": location_features["male_population"],
+        "population_density": location_features["population_density"],
+        "area_type_encoded": location_features["area_type_encoded"],
+        "shop_size": scaled_store_features[0][0],           # scaled
+        "Stoks availabity": scaled_store_features[0][1],   # scaled
+        "employee_count": scaled_store_features[0][2],     # scaled
+        "Competitors": scaled_store_features[0][3],        # scaled
+        "market_score": location_features["market_score"]
+    }])
+
+    final_features = final_features[MODEL_FEATURES]
+
+    # Predict using ONNX with all 9 features (4 scaled, 5 unscaled)
     raw_prediction = store_model_session.run(
         [model_output_name],
-        {model_input_name: scaled_features}
+        {model_input_name: final_features.values.astype(np.float32)}
     )[0][0][0]
 
     # =========================
